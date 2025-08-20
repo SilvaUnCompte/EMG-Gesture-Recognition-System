@@ -42,5 +42,6 @@ def predict(req: PredictRequest):
 
 
 # Commande to run server: uvicorn use_server:app --reload --host 0.0.0.0 --port 8000
+# Doc auto generated http://127.0.0.1:8000/docs
 # POST http://127.0.0.1:8000/predict
 # BODY {"features": {"EMG1": 51, "EMG2": 8, "EMG3": 2, "EMG4": -3, "EMG5": -25, "EMG6": 12, "EMG7": -7, "EMG8": -26}}
