@@ -4,7 +4,7 @@ import joblib
 import json
 
 # ===== Load model artifacts =====
-MODEL_DIR = "models/gesture_cls/1.0.0_20250819T132222Z"
+MODEL_DIR = "models/gesture_cls/1.0.0_20250820T080853Z"
 pipe = joblib.load(f"{MODEL_DIR}/pipeline.joblib")
 with open(f"{MODEL_DIR}/config.json") as f:
     cfg = json.load(f)
@@ -29,7 +29,7 @@ def predict(req: PredictRequest):
     label = cfg["class_names"][top_idx]
     
     # Abstention
-    if top_prob < cfg.get("abstain_threshold", 0.6):
+    if top_prob < cfg.get("abstain_threshold", 0.65):
         label = "unknown"
     
     # Top-K
@@ -41,7 +41,7 @@ def predict(req: PredictRequest):
 
 
 
-# Commande to run server: uvicorn use_server:app --reload --host 0.0.0.0 --port 8000
+# Commande to run server: python -m uvicorn use_server:app --reload --host 0.0.0.0 --port 8000
 # Doc auto generated http://127.0.0.1:8000/docs
 # POST http://127.0.0.1:8000/predict
 # BODY {"features": {"EMG1": 51, "EMG2": 8, "EMG3": 2, "EMG4": -3, "EMG5": -25, "EMG6": 12, "EMG7": -7, "EMG8": -26}}
