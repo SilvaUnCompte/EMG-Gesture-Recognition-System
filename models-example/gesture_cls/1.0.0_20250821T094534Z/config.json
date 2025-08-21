@@ -1,0 +1,25 @@
+{
+  "feature_names": [
+    "EMG1",
+    "EMG2",
+    "EMG3",
+    "EMG4",
+    "EMG5",
+    "EMG6",
+    "EMG7",
+    "EMG8"
+  ],
+  "class_names": [
+    "fist",
+    "pinch",
+    "rest",
+    "wrist-back",
+    "wrist-forward"
+  ],
+  "top_k": 2,
+  "abstain_threshold": 0.6,
+  "random_state": 42,
+  "library": {
+    "sklearn": ">=1.2"
+  }
+}
