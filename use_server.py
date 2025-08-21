@@ -1,10 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import joblib
 import json
 
+# ============================================== Informations =========================================================
+# Commande to run server: python -m uvicorn use_server:app --reload --host 0.0.0.0 --port 8000
+# Doc auto generated http://127.0.0.1:8000/docs
+# POST http://127.0.0.1:8000/predict
+# BODY {"features": {"EMG1": 51, "EMG2": 8, "EMG3": 2, "EMG4": -3, "EMG5": -25, "EMG6": 12, "EMG7": -7, "EMG8": -26}}
+# =====================================================================================================================
+
 # ===== Load model artifacts =====
-MODEL_DIR = "models/gesture_cls/1.0.0_20250820T080853Z"
+MODEL_DIR = "models/gesture_cls/1.0.0_20250821T094534Z"
 pipe = joblib.load(f"{MODEL_DIR}/pipeline.joblib")
 with open(f"{MODEL_DIR}/config.json") as f:
     cfg = json.load(f)
@@ -16,8 +23,10 @@ class PredictRequest(BaseModel):
 # ===== Create FastAPI app =====
 app = FastAPI(title="Gesture Classifier API")
 
+
 @app.post("/predict")
 def predict(req: PredictRequest):
+    check_param(req)
 
     # Reorder features according to the model's expectations
     ordered_features = [req.features[f] for f in cfg["feature_names"]]
@@ -27,8 +36,8 @@ def predict(req: PredictRequest):
     top_idx = probs.argmax()
     top_prob = float(probs[top_idx])
     label = cfg["class_names"][top_idx]
-    
-    # Abstention
+
+    # Not confident
     if top_prob < cfg.get("abstain_threshold", 0.65):
         label = "unknown"
     
@@ -41,7 +50,9 @@ def predict(req: PredictRequest):
 
 
 
-# Commande to run server: python -m uvicorn use_server:app --reload --host 0.0.0.0 --port 8000
-# Doc auto generated http://127.0.0.1:8000/docs
-# POST http://127.0.0.1:8000/predict
-# BODY {"features": {"EMG1": 51, "EMG2": 8, "EMG3": 2, "EMG4": -3, "EMG5": -25, "EMG6": 12, "EMG7": -7, "EMG8": -26}}
+def check_param(req: PredictRequest):
+    if not req.features:
+        raise HTTPException(status_code=422, detail="Missing features in request.")
+    for key in cfg["feature_names"]:
+        if key not in req.features:
+            raise HTTPException(status_code=422, detail=f"Missing feature: {key}")
