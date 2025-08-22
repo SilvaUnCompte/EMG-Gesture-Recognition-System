@@ -12,33 +12,6 @@ Currently, the project was tested on a limited number of gestures:
 - **wrist-back** - Wrist flexion backward
 - **wrist-forward** - Wrist flexion forward
 
-## Project Structure
-
-```
-├── models/                    # Trained model artifacts (Not in git)
-│   ├── gesture_recognition_old
-│   └── gesture_recognition_1.2.7_[timestamp]/
-│          ├── pipeline.joblib
-│          ├── config.json
-│          └── metrics.json
-└── notebooks/                 # Jupyter notebooks for experimentation
-    ├── train_ai.ipynb
-    ├── train_model_v1         # Training script with hyperparameter optimization
-    └── ...
-├── cli_model_interface.py     # CLI prediction tool
-├── data.csv                   # Training dataset with EMG readings
-├── server.py                  # Python server implementation
-├── train_model.py             # Main training script
-```
-
-## Technologies Used
-
-- **Python 3.11+**
-- **Machine Learning**: scikit-learn, pandas, numpy
-- **Web API**: FastAPI, uvicorn
-- **Visualization**: matplotlib
-- **Model Persistence**: joblib
-
 ## Data Format
 
 The EMG data is stored in CSV format with semicolon separators:
@@ -55,6 +28,15 @@ pinch;-2;4;-22;-6;0;0;-2;-3;7ff2a046-ff05-452b-88f2-7538daf97f48;2025-08-20 09:5
 - **EMG1-EMG8**: Raw EMG sensor readings (8 channels)
 - **Additional metadata (Optional)**: SessionID, Timestamp
 
+## Installation
+
+1. **Clone the repository**
+2. **Install dependencies:**
+```bash
+pip install pandas scikit-learn fastapi uvicorn matplotlib seaborn joblib pydantic numpy
+```
+3. **Ensure you have a data file**
+
 ## Quick Start
 
 ### 1. Training a Model
@@ -62,7 +44,7 @@ pinch;-2;4;-22;-6;0;0;-2;-3;7ff2a046-ff05-452b-88f2-7538daf97f48;2025-08-20 09:5
 ```bash
 python train_model.py data.csv
 ```
-_Specify data path, or use the default root file 'data.csv'_'
+_Specify data path, or use the default root file 'data.csv'_.
 
 This will:
 - Load and preprocess the data
@@ -70,10 +52,12 @@ This will:
 - Evaluate performance with cross-validation
 - Export the trained model with timestamp
 
+_More information in the [Basic Training](#basic-training-pipeline-train_modelpy) section._
+
 ### 2. Starting the API Server
 
 ```bash
-python -m uvicorn use_server:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 _By default, the server uses the last model created in the 'models' directory._
 
@@ -185,16 +169,6 @@ During training, the script generates:
 - **Multi-class ROC Curves**: Performance curves for each gesture class
 - **Console Output**: Detailed classification report and cross-validation scores
 
-## Installation
-
-1. **Clone the repository**
-2. **Install dependencies:**
-```bash
-pip install pandas scikit-learn fastapi uvicorn matplotlib seaborn joblib pydantic numpy
-```
-
-3. **Ensure you have a data file**
-
 ## Configuration
 
 Models are exported with configuration files containing:
@@ -208,6 +182,33 @@ Models are exported with configuration files containing:
 Models are automatically versioned with timestamps:
 - Format: `models/gesture_cls/VERSION_YYYYMMDDTHHMMSSZ`
 - Example: `models/gesture_cls/1.2.7_20250821T092331Z`
+
+## Project Structure
+
+```
+├── models/                    # Trained model artifacts (Not in git)
+│   ├── gesture_recognition_old
+│   └── gesture_recognition_1.2.7_[timestamp]/
+│          ├── pipeline.joblib
+│          ├── config.json
+│          └── metrics.json
+└── notebooks/                 # Jupyter notebooks for experimentation
+    ├── train_ai.ipynb
+    ├── train_model_v1         # Training script with hyperparameter optimization
+    └── ...
+├── cli_model_interface.py     # CLI prediction tool
+├── data.csv                   # Training dataset with EMG readings
+├── server.py                  # Python server implementation
+├── train_model.py             # Main training script
+```
+
+## Technologies Used
+
+- **Python 3.11+**
+- **Machine Learning**: scikit-learn, pandas, numpy
+- **Web API**: FastAPI, uvicorn
+- **Visualization**: matplotlib
+- **Model Persistence**: joblib
 
 ## Notes
 - **Data quality**: Ensure EMG sensors are properly calibrated
