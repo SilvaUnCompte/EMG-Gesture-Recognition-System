@@ -1,24 +1,30 @@
-import json
-import os
-from sklearn.calibration import LabelEncoder, label_binarize
+from shared_functions import import_data, encode_labels, splitting_data, drop_outside_scope_data
+from sklearn.calibration import label_binarize
 from sklearn.metrics import auc, classification_report, confusion_matrix, roc_curve
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import cross_val_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
 from datetime import datetime
-import pandas as pd
 import seaborn as sns
 import joblib
+import json
 import sys
+import os
 
-CLASS_NAMES = ['gesture1', 'gesture2', 'gesture3', 'gesture4', 'gesture5'] # Define dynamically
+
+CLASS_NAMES = [] # Define dynamically
 FEATURE_NAMES = ['EMG1', 'EMG2', 'EMG3', 'EMG4', 'EMG5', 'EMG6', 'EMG7', 'EMG8']
-pre_sep = "\n\n\033[92m =========="
-post_sep = "===========\033[0m"
+GESTURE_COL = "CurrentGestures"
+THRESHOLD_COL = "Threshold"
+PRE_SEP = "\n\n\033[92m =========="
+POST_SEP = "===========\033[0m"
+
 
 def main():
+    global CLASS_NAMES
+
     if len(sys.argv) == 2:
         data_path = sys.argv[1]
     else:
@@ -26,15 +32,16 @@ def main():
         data_path = "data.csv"
 
     # Import and preprocess data
-    print(pre_sep, "Importing and preprocessing data", post_sep)
+    print(PRE_SEP, "Importing and preprocessing data", POST_SEP)
     df = import_data(data_path)
-    df = encode_labels(df)
+    df = drop_outside_scope_data(df, GESTURE_COL, THRESHOLD_COL)
+    df, CLASS_NAMES = encode_labels(df, GESTURE_COL)
 
     # Split data
-    X_train, y_train, X_test, y_test = splitting_data(df)
+    X_train, y_train, X_test, y_test = splitting_data(df, FEATURE_NAMES, 0.25)
 
     # Create and train model
-    print(pre_sep, "Creating and training the MLP model", post_sep)
+    print(PRE_SEP, "Creating and training the MLP model", POST_SEP)
     model = create_mlp_model(  
         hidden_layer_sizes=(64,),                   # TODO: change with adapted Hyperparameters
         activation='tanh',                          # TODO: change with adapted Hyperparameters
@@ -47,63 +54,6 @@ def main():
     export_model(model, X_train, y_train, X_test, y_test)
 
 
-
-# =========== Import data ===========
-
-def import_data(path):
-    if not os.path.exists(path):
-        print(f"\033[91mFile not found: {path}\033[0m")
-        sys.exit(1)
-
-    df = pd.read_csv(path, sep=";")
-    print(df.shape)  # dimensions
-    print(df.info())  # types and missing values
-    df = df.drop_duplicates()  # remove duplicate rows
-    df = df.dropna() # remove rows with missing values
-    return df
-
-# =========== Encode labels ===========
-
-def encode_labels(df):
-    """
-    Encodes the gesture labels in the DataFrame using LabelEncoder.
-
-    Parameters:
-    df (DataFrame): The input DataFrame containing gesture labels.
-
-    Returns:
-    DataFrame: A new DataFrame with an additional 'label' column containing encoded labels.
-    """
-    global CLASS_NAMES
-
-    encoder = LabelEncoder()
-    df['label'] = encoder.fit_transform(df['gesture'])
-    CLASS_NAMES = encoder.classes_.tolist()
-    print("\nEncoded labels:")
-    print(df[['label', 'gesture']].drop_duplicates())
-
-    return df
-
-# =========== Split data ===========
-
-def splitting_data(df):
-    """
-    Splits the DataFrame into training and test sets.
-
-    Parameters:
-    df (DataFrame): The input DataFrame with features and encoded labels.
-
-    Returns:
-    Tuple: X_train, y_train, X_test, y_test
-    """
-
-    X = df[FEATURE_NAMES]
-    y = df['label']
-
-    # Split dataset into train, validation, and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
-
-    return X_train, y_train, X_test, y_test
 
 # =========== Create MLP model ===========
 
@@ -125,7 +75,7 @@ def create_mlp_model(hidden_layer_sizes, activation, alpha, learning_rate_init):
 # =========== Metrics about model performances ===========
 
 def evaluate_model(pipe, X_test, y_test):
-    print(pre_sep, "Evaluating model performance", post_sep)
+    print(PRE_SEP, "Evaluating model performance", POST_SEP)
 
     # Evaluate on test set
     y_pred = pipe.predict(X_test)
