@@ -17,15 +17,16 @@ Currently, the project was tested on a limited number of gestures:
 The EMG data is stored in CSV format with semicolon separators:
 
 ```csv
-gesture;EMG1;EMG2;EMG3;EMG4;EMG5;EMG6;EMG7;EMG8;SessionID;Timestamp
-fist;-7;5;-6;-8;-4;-1;10;16;2;7ff2a046-ff05-452b-88f2-7538daf97f48;2025-08-20 09:50:33.3417
-wrist-back;-2;48;-12;-22;-1;-1;-10;0;7ff2a046-ff05-452b-88f2-7538daf97f48;2025-08-20 09:55:20.5966
-pinch;-2;4;-22;-6;0;0;-2;-3;7ff2a046-ff05-452b-88f2-7538daf97f48;2025-08-20 09:51:40.0482
+CurrentGestures;EMG1;EMG2;EMG3;EMG4;EMG5;EMG6;EMG7;EMG8;Framecount;SessionID;Threshold;Timestamp
+fist;-2;19;16;2;13;4;7;2;483;993b0c69-a43a-4942-b533-e6f782a5a939;above;2025-09-03 09:30:50.4475
+wrist;-2;-5;-24;6;2;-5;-3;0;483;993b0c69-a43a-4942-b533-e6f782a5a939;above;2025-09-03 09:30:50.4485
+pinch;-7;-8;3;2;-12;4;-6;-3;484;993b0c69-a43a-4942-b533-e6f782a5a939;below;2025-09-03 09:30:50.4624
 ```
 
 ### Features
-- **gesture**: Target gesture label
+- **CurrentGestures**: Target gesture label
 - **EMG1-EMG8**: Raw EMG sensor readings (8 channels)
+- **Threshold**: Used to only keep line with "above"
 - **Additional metadata (Optional)**: SessionID, Timestamp
 
 ## Installation
@@ -42,7 +43,7 @@ pip install pandas scikit-learn fastapi uvicorn matplotlib seaborn joblib pydant
 ### 1. Training a Model
 
 ```bash
-python train_model.py data.csv
+python train_mlp_model.py data.csv
 ```
 _Specify data path, or use the default root file 'data.csv'_.
 
@@ -199,7 +200,8 @@ Models are automatically versioned with timestamps:
 ├── cli_model_interface.py     # CLI prediction tool
 ├── data.csv                   # Training dataset with EMG readings
 ├── server.py                  # Python server implementation
-├── train_model.py             # Main training script
+├── train_mlp_model.py         # Training mlp model script
+├── shared_functions.py        # Functions used in all training scripts
 ```
 
 ## Technologies Used
