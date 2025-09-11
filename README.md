@@ -34,7 +34,7 @@ pinch;-7;-8;3;2;-12;4;-6;-3;484;993b0c69-a43a-4942-b533-e6f782a5a939;below;2025-
 1. **Clone the repository**
 2. **Install dependencies:**
 ```bash
-pip install pandas scikit-learn fastapi uvicorn matplotlib seaborn joblib pydantic numpy
+pip install pandas scikit-learn fastapi uvicorn matplotlib seaborn joblib pydantic numpy optuna
 ```
 3. **Ensure you have a data file**
 
@@ -217,5 +217,6 @@ Models are automatically versioned with timestamps:
 - **Real-time performance**: API response time typically < 100ms
 - **Model updates**: Retrain periodically with new data for best performance
 - **Hardware compatibility**: Works with any 8-channel EMG acquisition system (e.g. Myo Armband)
+
 
 _Feel free to use my work._
