@@ -120,7 +120,7 @@ python cli_model_interface.py --model_dir models/gesture_recognition_1.2.7_xxxxx
 - **Input validation**: Ensures all 8 EMG features are provided
 
 ## Basic Training Pipeline (train_model.py)
-The [train_model.py](train_model.py) script implements a training pipeline with fixed hyperparameters. For hyperparameter optimization, use [train_model_v1.ipynb](notebooks/train_model_v1.ipynb).
+The [train_mlp_model.py](train_mlp_model.py) script implements a training pipeline (MLP) with fixed hyperparameters. For hyperparameter optimization, use [train_model_MLP.ipynb](notebooks/train_model_MLP.ipynb).
 
 ### Training Workflow
 
@@ -151,7 +151,7 @@ The [train_model.py](train_model.py) script implements a training pipeline with 
 ```
 
 ### Hyperparameter Optimization
-Don't forget to adapt hyperparameters and experiment with different architectures for best results. You can use the `Hyperparameter optimization` section in [train_model_v1.ipynb](notebooks/train_model_v1.ipynb).
+Don't forget to adapt hyperparameters and experiment with different architectures for best results. You can use the `Hyperparameter optimization` section in [train_model_MLP.ipynb](notebooks/train_model_MLP.ipynb).
 
 Example:
 ```python
@@ -194,8 +194,8 @@ Models are automatically versioned with timestamps:
 │          ├── config.json
 │          └── metrics.json
 └── notebooks/                 # Jupyter notebooks for experimentation
-    ├── train_ai.ipynb
-    ├── train_model_v1         # Training script with hyperparameter optimization
+    ├── train_model_RF
+    ├── train_model_MLP        # Training script with hyperparameter optimization
     └── ...
 ├── cli_model_interface.py     # CLI prediction tool
 ├── data.csv                   # Training dataset with EMG readings
@@ -220,3 +220,4 @@ Models are automatically versioned with timestamps:
 
 
 _Feel free to use my work._
+
