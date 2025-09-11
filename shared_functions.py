@@ -39,6 +39,8 @@ def drop_outside_scope_data(df, gesture_col, threshold_col):
     # Combine the valid gestures and thresholds
     valid_rows = df[valid_gestures & valid_thresholds]
 
+    print(valid_rows.shape[0])
+
     # Keep only the rows that are within the defined scope
     return valid_rows
 
