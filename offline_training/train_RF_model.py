@@ -2,7 +2,7 @@ from shared_functions import import_data, encode_labels, splitting_data, drop_ou
 from sklearn.calibration import label_binarize
 from sklearn.metrics import auc, classification_report, confusion_matrix, roc_curve
 from sklearn.model_selection import cross_val_score
-from sklearn.neural_network import MLPClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from matplotlib import pyplot as plt
@@ -41,12 +41,13 @@ def main():
     X_train, y_train, X_test, y_test = splitting_data(df, FEATURE_NAMES, 0.25)
 
     # Create and train model
-    print(PRE_SEP, "Creating and training the MLP model", POST_SEP)
-    model = create_mlp_model(  
-        hidden_layer_sizes=(64,),                   # TODO: change with adapted Hyperparameters
-        activation='tanh',                          # TODO: change with adapted Hyperparameters
-        alpha=0.01395146418868073,                  # TODO: change with adapted Hyperparameters
-        learning_rate_init=0.0074171634474875445    # TODO: change with adapted Hyperparameters
+    print(PRE_SEP, "Creating and training the Random Forest model", POST_SEP)
+    model = create_rf_model(
+        n_estimators=100,              # Number of trees
+        max_depth=None,                # No maximum depth
+        min_samples_split=2,           # Minimum samples to split
+        min_samples_leaf=1,            # Minimum samples per leaf
+        random_state=42                # For reproducibility
     )
     print("Model parameters:", model.get_params(), "\nTraining...")
 
@@ -55,21 +56,15 @@ def main():
 
 
 
-# =========== Create MLP model ===========
+# =========== Create Random Forest model ===========
 
-def create_mlp_model(hidden_layer_sizes, activation, alpha, learning_rate_init):
-    return MLPClassifier(
-        hidden_layer_sizes=hidden_layer_sizes,
-        activation=activation,
-        solver='adam',
-        alpha=alpha,                                    # L2 regularization
-        learning_rate_init=learning_rate_init,
-        max_iter=2000,
-        validation_fraction=0.2,                        # Use 20% of training data for validation
-        early_stopping=True,                            # Stop when validation score stops improving
-        n_iter_no_change=50,                            # Stop after 50 iterations without improvement
-        random_state=42,
-        batch_size='auto'
+def create_rf_model(n_estimators, max_depth, min_samples_split, min_samples_leaf, random_state):
+    return RandomForestClassifier(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        min_samples_split=min_samples_split,
+        min_samples_leaf=min_samples_leaf,
+        random_state=random_state
     )
 
 # =========== Metrics about model performances ===========
@@ -96,7 +91,7 @@ def evaluate_model(pipe, X_test, y_test):
     plt.show()
 
     # ROC Curve
-    y_test_bin = label_binarize(y_test, classes=pipe.named_steps['mlp'].classes_)
+    y_test_bin = label_binarize(y_test, classes=pipe.named_steps['rf'].classes_)
     probs_full = pipe.predict_proba(X_test)
 
     plt.figure()
@@ -115,17 +110,17 @@ def evaluate_model(pipe, X_test, y_test):
 
 # =========== Model export ===========
 
-def export_model(mlp, X_train, y_train, X_test, y_test):
+def export_model(rf, X_train, y_train, X_test, y_test):
     pipe = Pipeline([
         ('scaler', StandardScaler()),
-        ('mlp', mlp)
+        ('rf', rf)
     ])
     pipe.fit(X_train, y_train)
 
 
     # Create a directory for the model
     timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    model_dir = f"models/gesture_recognition_1.2.7_{timestamp}"
+    model_dir = f"../models/gesture_recognition_1.2.7_{timestamp}"
     os.makedirs(model_dir, exist_ok=True)
 
 
