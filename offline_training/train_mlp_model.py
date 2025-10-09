@@ -125,7 +125,7 @@ def export_model(mlp, X_train, y_train, X_test, y_test):
 
     # Create a directory for the model
     timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    model_dir = f"../models/gesture_recognition_1.2.7_{timestamp}"
+    model_dir = f"models/gesture_recognition_1.2.7_{timestamp}"
     os.makedirs(model_dir, exist_ok=True)
 
 

@@ -2,7 +2,7 @@
 
 Machine learning system for recognizing hand gestures using Myo Armband (EMG) sensor data.
 This system analyzes EMG signals from 8 sensors to classify different hand gestures.
-It uses neural networks (Multi-Layer Perceptron) and exposes recognition through a web API.
+It uses machine learning models (Multi-Layer Perceptron and Random Forest) and exposes recognition through a web API.
 
 ## Supported Gestures
 Currently, the project was tested on a limited number of gestures:
@@ -45,15 +45,16 @@ pip install pandas scikit-learn fastapi uvicorn matplotlib seaborn joblib pydant
 ```bash
 python train_mlp_model.py data.csv
 ```
+
 _Specify data path, or use the default root file 'data.csv'_.
 
 This will:
 - Load and preprocess the data
-- Train an MLP neural network
+- Train the selected model (MLP or Random Forest)
 - Evaluate performance with cross-validation
 - Export the trained model with timestamp
 
-_More information in the [Basic Training](#basic-training-pipeline-train_modelpy) section._
+_More information in the [Basic Training](#basic-training-pipeline) section._
 
 ### 2. Starting the API Server
 
@@ -127,7 +128,7 @@ The [train_mlp_model.py](train_mlp_model.py) script implements a training pipeli
 1. **Data Loading**: Import CSV with semicolon separator
 2. **Quality Control**: Remove duplicates and missing values
 3. **Preprocessing**: Standardize EMG features, encode labels
-4. **Model Training**: Train MLP with early stopping
+4. **Model Training**: Train selected model with cross-validation
 5. **Evaluation**: Comprehensive performance analysis
 6. **Export**: Save complete pipeline with metadata
 
@@ -153,7 +154,7 @@ The [train_mlp_model.py](train_mlp_model.py) script implements a training pipeli
 ### Hyperparameter Optimization
 Don't forget to adapt hyperparameters and experiment with different architectures for best results. You can use the `Hyperparameter optimization` section in [train_model_MLP.ipynb](notebooks/train_model_MLP.ipynb).
 
-Example:
+#### MLP Example:
 ```python
 model = create_mlp_model(
     hidden_layer_sizes=(128, 64, 32),  # Multi-layer architecture
@@ -165,7 +166,7 @@ model = create_mlp_model(
 
 ### Visual Outputs
 
-During training, the script generates:
+During training, the scripts generate:
 - **Confusion Matrix Heatmap**: Classification accuracy visualization
 - **Multi-class ROC Curves**: Performance curves for each gesture class
 - **Console Output**: Detailed classification report and cross-validation scores
@@ -209,8 +210,9 @@ Models are automatically versioned with timestamps:
 - **Python 3.11+**
 - **Machine Learning**: scikit-learn, pandas, numpy
 - **Web API**: FastAPI, uvicorn
-- **Visualization**: matplotlib
+- **Visualization**: matplotlib, seaborn
 - **Model Persistence**: joblib
+- **Hyperparameter Optimization**: optuna
 
 ## Notes
 - **Data quality**: Ensure EMG sensors are properly calibrated
