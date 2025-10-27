@@ -64,6 +64,10 @@ def predict(req: PredictRequest):
     return {"label": label, "prob": top_prob, "topk": topk}
 
 
+@app.post("/ping")
+def ping():
+    return {"status": "ok"}
+
 def check_param(req: PredictRequest):
     if not req.features:
         raise HTTPException(status_code=422, detail="Missing features in request.")
