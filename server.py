@@ -64,7 +64,7 @@ def predict(req: PredictRequest):
     return {"label": label, "prob": top_prob, "topk": topk}
 
 
-@app.post("/ping")
+@app.get("/ping")
 def ping():
     return {"status": "ok"}
 
