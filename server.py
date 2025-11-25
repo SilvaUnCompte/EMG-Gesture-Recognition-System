@@ -32,6 +32,9 @@ with open(f"{MODEL_DIR}/config.json") as f:
 class PredictRequest(BaseModel):
     features: dict
 
+class BatchPredictRequest(BaseModel):
+    batch: list[dict]  # List of feature dictionaries
+
 
 # ======= Create FastAPI app =======
 app = FastAPI(title="Gesture Classifier API")
@@ -62,6 +65,51 @@ def predict(req: PredictRequest):
     topk = [{"label": cfg["class_names"][i], "prob": float(probs[i])} for i in topk_idx]
     
     return {"label": label, "prob": top_prob, "topk": topk}
+
+
+@app.post("/predict_batch")
+def predict_batch(req: BatchPredictRequest):
+    if not req.batch:
+        raise HTTPException(status_code=422, detail="Batch cannot be empty.")
+    
+    results = []
+    for idx, features in enumerate(req.batch):
+        # Validate each sample
+        for key in cfg["feature_names"]:
+            if key not in features:
+                raise HTTPException(
+                    status_code=422, 
+                    detail=f"Missing feature '{key}' in batch item {idx}"
+                )
+        
+        # Reorder features according to the model's expectations
+        ordered_features = [features[f] for f in cfg["feature_names"]]
+        results.append(ordered_features)
+    
+    # Batch prediction
+    X = pd.DataFrame(results, columns=cfg["feature_names"])
+    probs_batch = pipe.predict_proba(X)
+    
+    # Process each prediction
+    predictions = []
+    for probs in probs_batch:
+        # Top-1
+        top_idx = probs.argmax()
+        top_prob = float(probs[top_idx])
+        label = cfg["class_names"][top_idx]
+
+        # Not confident
+        if top_prob < cfg.get("abstain_threshold", 0.65):
+            label = "unknown"
+        
+        # Top-K
+        top_k = cfg.get("top_k", 2)
+        topk_idx = probs.argsort()[-top_k:][::-1]
+        topk = [{"label": cfg["class_names"][i], "prob": float(probs[i])} for i in topk_idx]
+        
+        predictions.append({"label": label, "prob": top_prob, "topk": topk})
+    
+    return {"predictions": predictions}
 
 
 @app.get("/ping")

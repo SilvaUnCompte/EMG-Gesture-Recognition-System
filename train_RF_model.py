@@ -35,6 +35,14 @@ def main():
     print(PRE_SEP, "Importing and preprocessing data", POST_SEP)
     df = import_data(data_path)
     df = drop_outside_scope_data(df, GESTURE_COL, THRESHOLD_COL)
+    # Filter out Neutral gestures before encoding/splitting
+    if GESTURE_COL in df.columns:
+        before_count = df.shape[0]
+        df = df[df[GESTURE_COL] != "Neutral"]
+        removed = before_count - df.shape[0]
+        if removed > 0:
+            print(f"Filtered out 'Neutral' rows: {removed} removed")
+
     df, CLASS_NAMES = encode_labels(df, GESTURE_COL)
 
     # Split data
