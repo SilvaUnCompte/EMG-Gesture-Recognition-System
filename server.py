@@ -40,16 +40,9 @@ class BatchPredictRequest(BaseModel):
 app = FastAPI(title="Gesture Classifier API")
 
 
-# ======= Define API endpoints =======
-@app.post("/predict")
-def predict(req: PredictRequest):
-    check_param(req)
+def process_prediction(probs, cfg):
+    """Process prediction probabilities and return label, prob, and topk."""
 
-    # Reorder features according to the model's expectations
-    ordered_features = [req.features[f] for f in cfg["feature_names"]]
-    X = pd.DataFrame([ordered_features], columns=cfg["feature_names"])
-    probs = pipe.predict_proba(X)[0]
-    
     # Top-1
     top_idx = probs.argmax()
     top_prob = float(probs[top_idx])
@@ -65,6 +58,19 @@ def predict(req: PredictRequest):
     topk = [{"label": cfg["class_names"][i], "prob": float(probs[i])} for i in topk_idx]
     
     return {"label": label, "prob": top_prob, "topk": topk}
+
+
+# ======= Define API endpoints =======
+@app.post("/predict")
+def predict(req: PredictRequest):
+    check_param(req)
+
+    # Reorder features according to the model's expectations
+    ordered_features = [req.features[f] for f in cfg["feature_names"]]
+    X = pd.DataFrame([ordered_features], columns=cfg["feature_names"])
+    probs = pipe.predict_proba(X)[0]
+    
+    return process_prediction(probs, cfg)
 
 
 @app.post("/predict_batch")
@@ -93,21 +99,7 @@ def predict_batch(req: BatchPredictRequest):
     # Process each prediction
     predictions = []
     for probs in probs_batch:
-        # Top-1
-        top_idx = probs.argmax()
-        top_prob = float(probs[top_idx])
-        label = cfg["class_names"][top_idx]
-
-        # Not confident
-        if top_prob < cfg.get("abstain_threshold", 0.65):
-            label = "unknown"
-        
-        # Top-K
-        top_k = cfg.get("top_k", 2)
-        topk_idx = probs.argsort()[-top_k:][::-1]
-        topk = [{"label": cfg["class_names"][i], "prob": float(probs[i])} for i in topk_idx]
-        
-        predictions.append({"label": label, "prob": top_prob, "topk": topk})
+        predictions.append(process_prediction(probs, cfg))
     
     return {"predictions": predictions}
 
