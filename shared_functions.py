@@ -69,7 +69,7 @@ def encode_labels(df, GESTURE_COL):
 
 def splitting_data(df, feature_names, test_size=0.25):
     """
-    Splits the DataFrame into training and test sets.
+    Splits the DataFrame into training and test sets using stratified sampling.
 
     Parameters:
     df (DataFrame): The input DataFrame with features and encoded labels.
@@ -83,7 +83,12 @@ def splitting_data(df, feature_names, test_size=0.25):
     X = df[feature_names]
     y = df['label']
 
-    # Split dataset into train, validation, and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+    # Split dataset into train and test sets with stratified sampling
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, 
+        test_size=test_size, 
+        random_state=42,
+        stratify=y  # Stratified sampling to maintain class distribution
+    )
 
     return X_train, y_train, X_test, y_test
