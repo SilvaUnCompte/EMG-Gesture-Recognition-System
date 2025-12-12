@@ -23,7 +23,7 @@ from shared_functions import import_data, encode_labels, splitting_data, drop_ou
 from windowing_features import create_windows_from_dataframe, get_feature_names, WINDOW_SIZE, WINDOW_STRIDE, EMG_CHANNELS
 from sklearn.calibration import label_binarize
 from sklearn.metrics import auc, classification_report, confusion_matrix, roc_curve, accuracy_score
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
@@ -121,17 +121,23 @@ def main():
     print(f"Windowed samples: {len(windowed_df)}")
     print(f"Features extracted per window: {len(get_feature_names())}")
     
-    # Drop rows with invalid thresholds if threshold column exists
+    # Save a copy WITH Neutral for gate model training FIRST (before any threshold filtering)
+    # Gate model needs both Rest (Neutral below threshold) and Gesture samples
+    windowed_df_with_neutral = windowed_df.copy()
+    
+    # Drop rows with invalid thresholds ONLY for gesture training
+    # For gestures (non-Neutral), we only want threshold=="above"
+    # For Neutral, we keep all samples (both above and below) for gate model
     if THRESHOLD_COL in windowed_df.columns:
         before_count = windowed_df.shape[0]
-        windowed_df = windowed_df[windowed_df[THRESHOLD_COL] == "above"]
+        # Keep only gesture samples where threshold is "above"
+        windowed_df = windowed_df[
+            (windowed_df[GESTURE_COL] == "Neutral") | 
+            (windowed_df[THRESHOLD_COL] == "above")
+        ]
         removed = before_count - windowed_df.shape[0]
         if removed > 0:
-            print(f"Filtered out threshold != 'above': {removed} removed")
-
-    # Save a copy WITH Neutral for gate model training (BEFORE filtering out Neutral)
-    # Gate model needs both Rest and Gesture samples
-    windowed_df_with_neutral = windowed_df.copy()
+            print(f"Filtered out non-Neutral samples with threshold != 'above': {removed} removed")
     
     # Now filter out Neutral for gesture classifier training
     if GESTURE_COL in windowed_df.columns:
@@ -177,13 +183,8 @@ def main():
 
     # Create and train model
     print(PRE_SEP, "Creating and training the MLP model", POST_SEP)
-    model = create_mlp_model(  
-        hidden_layer_sizes=(128, 64, 32),               # Larger network for more features
-        activation='relu',
-        alpha=0.001,
-        learning_rate_init=0.001
-    )
-    print("Model parameters:", model.get_params(), "\nTraining...")
+    model = create_mlp_model()
+    print("Model parameters:", model.named_steps['mlp'].get_params())
 
     # Train gate model (Rest vs Gesture detection)
     print(PRE_SEP, "Training RF Gate Model (Rest vs Gesture)", POST_SEP)
@@ -204,9 +205,37 @@ def train_gate_model(windowed_df_with_neutral, feature_names):
     df_gate = windowed_df_with_neutral.copy()
     df_gate['gate_label'] = (df_gate['gesture'] != "Neutral").astype(int)
     
+    initial_rest_count = (df_gate['gate_label'] == 0).sum()
+    initial_gesture_count = (df_gate['gate_label'] == 1).sum()
+    print(f"Gate training data (before filtering) - Rest: {initial_rest_count}, Gesture: {initial_gesture_count}")
+    
+    # CRITICAL FIX: Filter out Neutral samples that are above threshold
+    # These are cases where user is gesturing but not hovering over a mole
+    # We only want TRUE rest states (below threshold) for the gate model
+    if THRESHOLD_COL in df_gate.columns:
+        neutral_above_threshold = (df_gate['gesture'] == "Neutral") & (df_gate[THRESHOLD_COL] == "above")
+        removed_count = neutral_above_threshold.sum()
+        df_gate = df_gate[~neutral_above_threshold]
+        print(f"Filtered out {removed_count} Neutral samples above threshold (false rest states)")
+    
     rest_count = (df_gate['gate_label'] == 0).sum()
     gesture_count = (df_gate['gate_label'] == 1).sum()
-    print(f"Gate training data - Rest: {rest_count}, Gesture: {gesture_count}")
+    print(f"Gate training data (after filtering) - Rest: {rest_count}, Gesture: {gesture_count}")
+    
+    # Safety check: ensure we have both classes
+    if rest_count == 0 or gesture_count == 0:
+        print(f"\n⚠️  ERROR: Cannot train gate model!")
+        print(f"   Rest samples: {rest_count}, Gesture samples: {gesture_count}")
+        print(f"   Checking what happened to Neutral samples...")
+        print(f"   Neutral in windowed_df_with_neutral: {(windowed_df_with_neutral['gesture'] == 'Neutral').sum()}")
+        if THRESHOLD_COL in windowed_df_with_neutral.columns:
+            neutral_below = ((windowed_df_with_neutral['gesture'] == 'Neutral') & 
+                           (windowed_df_with_neutral[THRESHOLD_COL] == 'below')).sum()
+            neutral_above = ((windowed_df_with_neutral['gesture'] == 'Neutral') & 
+                           (windowed_df_with_neutral[THRESHOLD_COL] == 'above')).sum()
+            print(f"   Neutral below threshold: {neutral_below}")
+            print(f"   Neutral above threshold: {neutral_above}")
+        raise ValueError("Gate model requires both Rest and Gesture samples")
     
     # Balance dataset by undersampling majority class
     rest_df = df_gate[df_gate['gate_label'] == 0]
@@ -231,12 +260,13 @@ def train_gate_model(windowed_df_with_neutral, feature_names):
     
     print(f"Gate model - Training: {len(X_train)}, Test: {len(X_test)}")
     
-    # Create gate model
+    # Create gate model with best parameters from grid search
     gate_model = RandomForestClassifier(
         n_estimators=200,
         max_depth=20,
-        min_samples_split=10,
-        min_samples_leaf=4,
+        min_samples_split=5,
+        min_samples_leaf=2,
+        max_features='sqrt',
         random_state=42,
         n_jobs=-1,
         class_weight='balanced'
@@ -247,7 +277,28 @@ def train_gate_model(windowed_df_with_neutral, feature_names):
 
 # =========== Create MLP model ===========
 
-def create_mlp_model(hidden_layer_sizes, activation, alpha, learning_rate_init):
+def create_mlp_model():
+    """Create MLP pipeline with best parameters from grid search"""
+    
+    pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('mlp', MLPClassifier(
+            hidden_layer_sizes=(128, 64, 32),  # Best from grid search
+            activation='tanh',                  # Best from grid search
+            solver='adam',
+            alpha=0.0001,                       # Best from grid search
+            learning_rate_init=0.001,           # Best from grid search
+            batch_size=32,                      # Best from grid search
+            max_iter=2000,
+            validation_fraction=0.2,
+            early_stopping=True,
+            n_iter_no_change=50,
+            random_state=42,
+            verbose=False
+        ))
+    ])
+    
+    return pipeline
     return MLPClassifier(
         hidden_layer_sizes=hidden_layer_sizes,
         activation=activation,
@@ -344,19 +395,17 @@ def evaluate_gate_model(pipe, X_test, y_test):
 
 # =========== Model export ===========
 
-def export_models(mlp, X_train, y_train, X_test, y_test, 
+def export_models(mlp_pipe, X_train, y_train, X_test, y_test, 
                   gate_model, gate_X_train, gate_y_train, gate_X_test, gate_y_test,
                   feature_names, gesture_max_emg):
     """Train and export both gesture classifier and gate model to same directory"""
     
-    # Train gesture classifier pipeline
-    gesture_pipe = Pipeline([
-        ('scaler', StandardScaler()),
-        ('mlp', mlp)
-    ])
-    gesture_pipe.fit(X_train, y_train)
-
+    # Train MLP pipeline
+    print("Training MLP gesture classifier...")
+    mlp_pipe.fit(X_train, y_train)
+    
     # Train gate model pipeline
+    print("Training RF gate model...")
     gate_pipe = Pipeline([
         ('scaler', StandardScaler()),
         ('rf', gate_model)
@@ -372,7 +421,7 @@ def export_models(mlp, X_train, y_train, X_test, y_test,
     print("\n" + "="*60)
     print("GESTURE CLASSIFIER EVALUATION")
     print("="*60)
-    gesture_accuracy, gesture_report, gesture_cm = evaluate_model(gesture_pipe, X_test, y_test)
+    gesture_accuracy, gesture_report, gesture_cm = evaluate_model(mlp_pipe, X_test, y_test)
     
     gesture_metrics = {
         "accuracy": gesture_accuracy,
@@ -382,7 +431,7 @@ def export_models(mlp, X_train, y_train, X_test, y_test,
     with open(f"{model_dir}/gesture_metrics.json", "w") as f:
         json.dump(gesture_metrics, f, indent=2)
     
-    joblib.dump(gesture_pipe, f"{model_dir}/gesture_pipeline.joblib")
+    joblib.dump(mlp_pipe, f"{model_dir}/gesture_pipeline.joblib")
     
     gesture_config = {
         "model_type": "gesture_classifier",

@@ -115,18 +115,21 @@ def create_windows_from_dataframe(df, gesture_col='CurrentGestures'):
         window_gestures = gestures[i:i + WINDOW_SIZE]
         gesture_label = pd.Series(window_gestures).mode()[0]  # Majority vote
         
-        # CRITICAL: Ensure threshold consistency across entire window
+        # CRITICAL: Ensure threshold consistency across entire window FOR GESTURES
         # Skip windows where EMG intensity changes from above to below threshold (or vice versa)
         # This ensures all samples in the window are at similar activation levels
+        # EXCEPTION: For Neutral, we allow mixed thresholds since rest can vary in intensity
         if thresholds is not None:
             window_thresholds = thresholds[i:i + WINDOW_SIZE]
             unique_thresholds = pd.Series(window_thresholds).unique()
             
-            if len(unique_thresholds) > 1:
+            # For non-Neutral gestures, require consistent threshold
+            if len(unique_thresholds) > 1 and gesture_label != "Neutral":
                 # This window spans a threshold boundary - skip it
                 continue
             
-            window_threshold = unique_thresholds[0]  # All same, so pick first
+            # For window threshold label, use majority vote
+            window_threshold = pd.Series(window_thresholds).mode()[0]
         else:
             window_threshold = None
         

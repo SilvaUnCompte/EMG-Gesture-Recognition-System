@@ -23,6 +23,10 @@ def import_data(path):
 def drop_outside_scope_data(df, gesture_col, threshold_col):
     """
     Drops rows from the DataFrame that are outside the scope defined by the gesture and threshold columns.
+    
+    Keeps:
+    - All Neutral samples (both above and below threshold) for gate model training
+    - Only above-threshold samples for actual gestures (for gesture classification)
 
     Parameters:
     df (DataFrame): The input DataFrame containing gesture and threshold information.
@@ -32,12 +36,16 @@ def drop_outside_scope_data(df, gesture_col, threshold_col):
     Returns:
     DataFrame: A new DataFrame with rows outside the defined scope removed.
     """
-    # Define the scope (Can be customized)
+    # Define the scope:
+    # - Valid gestures (not NULL)
+    # - For Neutral: keep all (both above and below threshold)
+    # - For gestures: keep only above threshold
     valid_gestures = df[gesture_col] != "NULL"
+    is_neutral = df[gesture_col] == "Neutral"
     valid_thresholds = df[threshold_col] == "above"
     
-    # Combine the valid gestures and thresholds
-    valid_rows = df[valid_gestures & valid_thresholds]
+    # Combine: keep if (Neutral with any threshold) OR (gesture with above threshold)
+    valid_rows = df[valid_gestures & (is_neutral | valid_thresholds)]
 
     print(valid_rows.shape[0])
 
