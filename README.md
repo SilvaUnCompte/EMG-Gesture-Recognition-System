@@ -4,6 +4,8 @@ Machine learning system for recognizing hand gestures using Myo Armband (EMG) se
 This system analyzes EMG signals from 8 sensors to classify different hand gestures.
 It uses neural networks (Multi-Layer Perceptron) and exposes recognition through a web API.
 
+Demo: <video src='https://www.youtube.com/watch?v=fV4BFyk_1sk' width=180/>
+
 ## Supported Gestures
 Currently, the project was tested on a limited number of gestures:
 - **rest** - Relaxed arm position
